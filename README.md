@@ -109,15 +109,8 @@ After deploy to a testnet or local net, you can run the scripts.
 Using cast deployed locally example: 
 
 ```
-cast send <ERC20_CONTRACT_ADDRESS> "transfer()"  --value 0.1ether --private-key <PRIVATE_KEY> --rpc-url $SEPOLIA_RPC_URL
+cast send <CONTRACT_ADDRESS> "funcName()"  --value 0.1ether --private-key <PRIVATE_KEY> --rpc-url $SEPOLIA_RPC_URL
 ```
-
-or, to create a ChainlinkVRF Subscription:
-
-```
-make createSubscription ARGS="--network sepolia"
-```
-
 
 ## Estimate gas
 
