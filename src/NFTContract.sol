@@ -33,7 +33,7 @@ contract NFTContract is ERC721, ERC721URIStorage, Ownable(msg.sender) {
     uint256 private _tokenIdCounter;
 
     // The constructor sets the name and symbol of the token using the ERC721 constructor.
-    constructor() ERC721("Somidax", "SMDX") {}
+    constructor() ERC721("Fractis", "FRAC") {}
 
     // Function to mint a new NFT. The function takes the recipient address and the token URI as parameters.
     function mint(address to, string memory uri) public returns (uint256) {
