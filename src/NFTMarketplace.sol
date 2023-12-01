@@ -97,6 +97,38 @@ contract NFTMarketplace {
     }
 
     //////////////// GETTERS (PURE AND VIEW)/////////////////////////
+
+    function extractValues(
+        uint256 bigNumber
+    ) public pure returns (uint256[18] memory) {
+        uint256[18] memory values;
+        bool inArray;
+
+        for (uint i = 0; i < 18; i++) {
+            inArray = false;
+            // We use modulo operation to get the remainder of the bigNumber divided by 10
+            uint256 digit = bigNumber % 10;
+
+            // Check if the digit already exists in the values array
+            for (uint256 i2 = 0; i2 < values.length; i2++) {
+                if (digit == values[i2]) {
+                    inArray = true;
+                    break;
+                }
+            }
+
+            // If the digit is not in the array, add it
+            if (!inArray) {
+                values[i] = digit;
+            }
+
+            // We then divide the bigNumber by 10 to effectively remove the last digit
+            bigNumber = bigNumber / 10;
+        }
+
+        return values;
+    }
+
     function arePartsCorrect(
         uint256[9] memory _numbers,
         address owner
