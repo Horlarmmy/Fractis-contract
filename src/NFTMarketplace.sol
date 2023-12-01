@@ -21,8 +21,9 @@
 // external & public view & pure functions
 
 // SPDX-License-Identifier: GPL-2.0-or-later
-
 pragma solidity ^0.8.19;
+
+import {IFractionToken} from "./interface/IFractionToken.sol";
 
 contract NFTMarketplace {
     /////////////// STATE VARIABLES ////////////////////
@@ -36,27 +37,35 @@ contract NFTMarketplace {
         address owner;
     }
 
+    struct Part {
+        uint256 id;
+        string url;
+    }
     /////////////// MAPPING ////////////////////
-    mapping(uint256 => mapping(uint256 => string)) public parts;
+    mapping(uint256 => mapping(uint256 => Part)) public parts;
     mapping(address => ListNFT) public ownerNFT;
+    mapping(uint256 => address) userWinner;
 
     /////////////// EVENTS ////////////////////
     event NFTCreated(uint256 tokenId, uint256[] partIds, address owner);
     event PartURIUpdated(uint256 tokenId, uint256 partId, string newURI);
-    event RewardWinner(address winner, uint256 _tokenId);
+    event WinnerRewarded(address winner, uint256 tokenId);
 
     constructor() {}
 
     // @functions
     // Function to create a new NFT with associated partIds and TokenURIs
-    function createNFT(uint256 tokenId, string[] memory tokenURIs) public {
+    function createNFT(
+        uint256 tokenId,
+        string[] memory tokenURIs,
+        uint256[] memory _ids
+    ) public {
         uint256[] memory newPartIds = new uint256[](9);
 
         // Create parts mapping for each tokenId and partId
         for (uint256 i = 0; i < 9; i++) {
-            uint256 partId = i + 1;
-            parts[tokenId][partId] = tokenURIs[i];
-            newPartIds[i] = partId;
+            parts[tokenId][_ids[i]] = Part({id: _ids[i], url: tokenURIs[i]});
+            newPartIds[i] = _ids[i];
         }
 
         // Create ListNFT instance and update mappings
@@ -68,32 +77,46 @@ contract NFTMarketplace {
     }
 
     /////////// @notice This would check if the part is correct
-    /////////// @dev The function matchPaths() returns true or false
+    /////////// @dev The function arePartsCorrect() returns true or false
     ///////////      if true, it means the user sent [1,2,3,4,5,6,7,8,9] and we reward the user
     /////////// @param Array of Numbers
-    function checkParts(uint256[9] memory _numbers, uint256 _tokenId) external {
-        bool didUserWin = matchPaths(_numbers);
+    function checkParts(
+        uint256[9] memory _numbers,
+        uint256 _tokenId,
+        address owner
+    ) external {
+        bool didUserWin = arePartsCorrect(_numbers, owner);
 
         require(didUserWin, "Unable to match paths, Please try again");
         rewardWinner(_tokenId);
     }
 
-    function rewardWinner(uint256 _tokenId) internal {
-        emit RewardWinner(msg.sender, _tokenId);
+    function rewardWinner(uint256 _tokenId) private {
+        userWinner[_tokenId] = msg.sender;
+        emit WinnerRewarded(msg.sender, _tokenId);
     }
 
     //////////////// GETTERS (PURE AND VIEW)/////////////////////////
-    function matchPaths(
-        uint256[9] memory _numbers
-    ) internal pure returns (bool _ifWon) {
+    function arePartsCorrect(
+        uint256[9] memory _numbers,
+        address owner
+    ) internal view returns (bool _ifWon) {
+        uint256[] memory ids = ownerNFT[owner].partIds;
+
         for (uint256 i = 0; i < 9; i++) {
             // Check if the number matches the index (1 to 9)
-            if (_numbers[i] != i + 1) {
+            if (_numbers[i] != ids[i]) {
                 // If there's a match, call the callback function
                 return false;
             }
         }
         return true;
+    }
+
+    function checkWinner(
+        uint256 _tokenId
+    ) external view returns (address _winnerAddr) {
+        return userWinner[_tokenId];
     }
 
     // Function to get the ListNFT associated with the calling address
@@ -102,8 +125,8 @@ contract NFTMarketplace {
         view
         returns (uint256, uint256[] memory, address)
     {
-        ListNFT memory currentNFT = ownerNFT[msg.sender];
-        return (currentNFT.tokenId, currentNFT.partIds, currentNFT.owner);
+        ListNFT memory userNFT = ownerNFT[msg.sender];
+        return (userNFT.tokenId, userNFT.partIds, userNFT.owner);
     }
 
     // Function to get all NFTs created, useful for listing all NFTs
@@ -115,7 +138,7 @@ contract NFTMarketplace {
     function getPartURI(
         uint256 tokenId,
         uint256 partId
-    ) public view returns (string memory) {
+    ) public view returns (Part memory) {
         return parts[tokenId][partId];
     }
 }
