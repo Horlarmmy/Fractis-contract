@@ -40,10 +40,11 @@ contract NFTMarketplace {
     struct Part {
         uint256 id;
         string url;
+        uint256 price;
     }
     /////////////// MAPPING ////////////////////
     mapping(uint256 => mapping(uint256 => Part)) public parts;
-    mapping(address => ListNFT) public ownerNFT;
+    mapping(address => mapping(uint256 => ListNFT)) public ownerNFT;
     mapping(uint256 => address) userWinner;
 
     /////////////// EVENTS ////////////////////
@@ -58,19 +59,20 @@ contract NFTMarketplace {
     function createNFT(
         uint256 tokenId,
         string[] memory tokenURIs,
-        uint256[] memory _ids
+        uint256[] memory _ids,
+        uint256[] memory _prices
     ) public {
         uint256[] memory newPartIds = new uint256[](9);
 
         // Create parts mapping for each tokenId and partId
         for (uint256 i = 0; i < 9; i++) {
-            parts[tokenId][_ids[i]] = Part({id: _ids[i], url: tokenURIs[i]});
+            parts[tokenId][_ids[i]] = Part({id: _ids[i], url: tokenURIs[i], price: _prices[i]});
             newPartIds[i] = _ids[i];
         }
 
         // Create ListNFT instance and update mappings
         ListNFT memory newListNFT = ListNFT(tokenId, newPartIds, msg.sender);
-        ownerNFT[msg.sender] = newListNFT;
+        ownerNFT[msg.sender][tokenId] = newListNFT;
         allNFTs.push(newListNFT);
 
         emit NFTCreated(tokenId, newPartIds, msg.sender);
@@ -85,7 +87,7 @@ contract NFTMarketplace {
         uint256 _tokenId,
         address owner
     ) external {
-        bool didUserWin = arePartsCorrect(_numbers, owner);
+        bool didUserWin = arePartsCorrect(_numbers, owner, _tokenId);
 
         require(didUserWin, "Unable to match paths, Please try again");
         rewardWinner(_tokenId);
@@ -131,9 +133,10 @@ contract NFTMarketplace {
 
     function arePartsCorrect(
         uint256[9] memory _numbers,
-        address owner
+        address owner,
+        uint256 tokenId
     ) internal view returns (bool _ifWon) {
-        uint256[] memory ids = ownerNFT[owner].partIds;
+        uint256[] memory ids = ownerNFT[owner][tokenId].partIds;
 
         for (uint256 i = 0; i < 9; i++) {
             // Check if the number matches the index (1 to 9)
@@ -152,12 +155,12 @@ contract NFTMarketplace {
     }
 
     // Function to get the ListNFT associated with the calling address
-    function getListNFT()
+    function getListNFT(uint256 tokenId)
         public
         view
         returns (uint256, uint256[] memory, address)
     {
-        ListNFT memory userNFT = ownerNFT[msg.sender];
+        ListNFT memory userNFT = ownerNFT[msg.sender][tokenId];
         return (userNFT.tokenId, userNFT.partIds, userNFT.owner);
     }
 
