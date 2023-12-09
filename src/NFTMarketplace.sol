@@ -69,7 +69,8 @@ contract NFTMarketplace {
         uint256 tokenId,
         string[] memory tokenURIs,
         uint256[] memory _ids,
-        uint256[] memory _prices
+        uint256[] memory _prices,
+        address nftAddress
     ) public {
         uint256[] memory newPartIds = new uint256[](9);
 
@@ -83,6 +84,10 @@ contract NFTMarketplace {
         ListNFT memory newListNFT = ListNFT(tokenId, newPartIds, msg.sender);
         ownerNFT[msg.sender][tokenId] = newListNFT;
         allNFTs.push(newListNFT);
+
+        require(IERC721(nftAddress).ownerOf(tokenId) == msg.sender, "not nft owner");
+        IERC721(nftAddress).transferFrom(msg.sender, address(this), tokenId);
+
 
         emit NFTCreated(tokenId, newPartIds, msg.sender);
     }
