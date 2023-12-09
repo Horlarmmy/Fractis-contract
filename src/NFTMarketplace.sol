@@ -24,6 +24,7 @@
 pragma solidity ^0.8.19;
 
 import {IFractionToken} from "./interface/IFractionToken.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 
 contract NFTMarketplace {
     /////////////// STATE VARIABLES ////////////////////
@@ -52,6 +53,14 @@ contract NFTMarketplace {
     event PartURIUpdated(uint256 tokenId, uint256 partId, string newURI);
     event WinnerRewarded(address winner, uint256 tokenId);
 
+    event BoughtNFT(
+        address indexed nft,
+        uint256 indexed tokenId,
+        uint256 price,
+        address indexed buyer,
+        uint256 chainid
+    );
+
     constructor() {}
 
     // @functions
@@ -77,6 +86,56 @@ contract NFTMarketplace {
 
         emit NFTCreated(tokenId, newPartIds, msg.sender);
     }
+
+     function buyNFT(
+        uint256 _tokenId,
+        address _nft
+    ) public payable  {
+        // Retrieve the NFT listing from the mapping using contract address and token ID
+        ListNFT storage listNft = ownerNFT[msg.sender][_tokenId];
+        uint256 price = getTotalNFTPrice(_tokenId);
+
+        // Check if the amount sent is sufficient to purchase the NFT
+        require(price >= msg.value, "Not sufficient amount sent");    
+        (bool success,) = payable(address(this)).call{value: msg.value}("");
+        require(success, "Unable to send Ether");
+
+        // Transfer the NFT to the buyer
+        IERC721(_nft).safeTransferFrom(
+            address(this),
+            msg.sender,
+            listNft.tokenId
+        );
+
+        // Mark the NFT as sold
+        listNft.owner = msg.sender;
+
+        // Emit the BoughtNFT event to notify about the successful purchase
+        emit BoughtNFT(
+            _nft,
+            listNft.tokenId,
+            msg.value,
+            msg.sender,
+            block.chainid
+        );
+
+        // Delete the NFT listing from the marketplace after the event is emitted
+        delete ownerNFT[msg.sender][_tokenId];
+    }
+
+    // function cancelListing(uint256 _tokenId, address _nft) public {
+    //     ListNFT memory listedNft = _listNfts[msg.sender][_tokenId];
+    //     if (listedNft.sold == true) {
+    //         revert SomidaxMarketPlace__NFTAlreadySold();
+    //     }
+    //     IERC721 nft = IERC721(_nft);
+    //     require(
+    //         nft.ownerOf(_tokenId) == msg.sender,
+    //         "Only Owners can cancel NFT"
+    //     );
+
+    //     delete _listNfts[msg.sender][_tokenId];
+    // }
 
     /////////// @notice This would check if the part is correct
     /////////// @dev The function arePartsCorrect() returns true or false
@@ -175,5 +234,18 @@ contract NFTMarketplace {
         uint256 partId
     ) public view returns (Part memory) {
         return parts[tokenId][partId];
+    }
+
+      function getTotalNFTPrice(
+        uint256 tokenId
+    ) public view returns (uint256) {
+        uint256 totalAmount;
+        ListNFT memory userNFT = ownerNFT[msg.sender][tokenId];
+        for (uint256 i; i < userNFT.partIds.length; i++)
+        {
+         Part memory part =  parts[tokenId][userNFT.partIds[i]];
+         totalAmount += part.price;
+        }
+        return totalAmount;
     }
 }
